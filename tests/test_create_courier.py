@@ -82,3 +82,54 @@ def test_create_courier(register_courier, delete_courier):
     courier = register_courier
     with allure.step("Проверка, что ID курьера был получен после регистрации"):
         assert courier.courier_id is not None, "ID курьера не был получен после регистрации"
+
+
+@allure.feature("Курьер")
+@allure.story("Создание курьера")
+@allure.title("Попытка создать курьера с уже существующим логином")
+@allure.description("Этот тест проверяет, что нельзя создать двух курьеров с одинаковым логином.")
+def test_create_duplicate_courier(register_courier, delete_courier):
+    """Тест на попытку регистрации курьера с уже существующим логином."""
+    courier = register_courier
+
+    duplicate_courier = Courier(login=courier.login, password="another_password", first_name="AnotherTest")
+
+    with allure.step("Отправка запроса на регистрацию второго курьера с таким же логином"):
+        response = duplicate_courier.register()
+
+    with allure.step("Проверка, что сервер вернул статус-код 409"):
+        assert response.status_code == 409, f"Ожидался 409, но получен {response.status_code} - {response.text}"
+
+    with allure.step("Проверка, что сервер вернул корректное сообщение об ошибке"):
+        assert response.json()["message"] == "Этот логин уже используется. Попробуйте другой.", \
+            f"Некорректное сообщение об ошибке: {response.json()}"
+
+
+@allure.feature("Курьер")
+@allure.story("Создание курьера")
+@allure.title("Проверка создания курьера без обязательных полей")
+@allure.description("Этот тест проверяет, что курьер не может быть создан, если отсутствует хотя бы одно обязательное поле.")
+@pytest.mark.parametrize("missing_field", ["login", "password"])
+def test_create_courier_missing_fields(register_courier, missing_field):
+    """Тест на проверку обязательных полей при создании курьера."""
+
+    # Создаём данные курьера с отсутствующим обязательным полем
+    courier_data = {
+        "login": register_courier.login,
+        "password": register_courier.password,
+        "firstName": register_courier.first_name
+    }
+
+    # Удаляем одно обязательное поле
+    courier_data.pop(missing_field)
+
+    with allure.step(f"Отправка запроса без поля {missing_field}"):
+        response = requests.post('https://qa-scooter.praktikum-services.ru/api/v1/courier', json=courier_data)
+
+    with allure.step("Проверка, что сервер вернул статус-код 400"):
+        assert response.status_code == 400, f"Ожидался статус-код 400, но получен {response.status_code} - {response.text}"
+
+    with allure.step("Проверка сообщения об ошибке"):
+        expected_message = "Недостаточно данных для создания учетной записи"
+        assert response.json().get("message") == expected_message, \
+            f"Ожидалось сообщение '{expected_message}', но получено {response.json()}"
