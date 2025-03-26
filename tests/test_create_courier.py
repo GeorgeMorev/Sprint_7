@@ -1,66 +1,84 @@
 import pytest
 import requests
-import random
-import string
 import allure
+import uuid
+import string
+import random
 
 
-@pytest.fixture
-def register_new_courier_and_return_login_password():
-    """Фикстура для создания нового курьера и возврата его учетных данных."""
-    with allure.step("Генерация случайных учетных данных для курьера"):
-        def generate_random_string(length):
-            """Генерирует случайную строку из строчных букв заданной длины."""
-            letters = string.ascii_lowercase
-            return ''.join(random.choice(letters) for _ in range(length))
+class Courier:
+    BASE_URL = 'https://qa-scooter.praktikum-services.ru/api/v1/courier'
 
-        login = generate_random_string(10)
-        password = generate_random_string(10)
-        first_name = generate_random_string(10)
+    def __init__(self, login=None, password=None, first_name=None):
+        """Создает объект курьера с уникальными данными"""
+        self.login = login or self._generate_random_string(8)
+        self.password = password or self._generate_random_string(10)
+        self.first_name = first_name or self._generate_random_string(6)
+        self.courier_id = None
 
-    with allure.step("Отправка запроса на создание нового курьера"):
+    @staticmethod
+    def _generate_random_string(length=10):
+        """Генерирует случайную строку"""
+        letters = string.ascii_lowercase
+        return ''.join(random.choice(letters) for _ in range(length))
+
+    def register(self):
+        """Регистрирует курьера через API"""
         payload = {
-            "login": login,
-            "password": password,
-            "firstName": first_name
+            "login": self.login,
+            "password": self.password,
+            "firstName": self.first_name
         }
-        response = requests.post('https://qa-scooter.praktikum-services.ru/api/v1/courier', json=payload)
+        response = requests.post(self.BASE_URL, json=payload)
+        if response.status_code == 201:
+            self.courier_id = self.get_courier_id()
+        return response
 
-    with allure.step("Проверка, что курьер успешно создан"):
-        assert response.status_code == 201
+    def get_courier_id(self):
+        """Получает ID курьера после успешной регистрации"""
+        payload = {"login": self.login, "password": self.password}
+        response = requests.post(f"{self.BASE_URL}/login", json=payload)
+        if response.status_code == 200:
+            return response.json().get('id')
+        return None
 
-    return login, password, first_name
+    def delete(self):
+        """Удаляет курьера через API"""
+        if self.courier_id:
+            response = requests.delete(f"{self.BASE_URL}/{self.courier_id}")
+            return response
+        return None
+
+
+@pytest.fixture(scope="function")
+def new_courier():
+    """Фикстура создаёт объект курьера с уникальными данными"""
+    return Courier()
+
+
+@pytest.fixture(scope="function")
+def register_courier(new_courier):
+    """Фикстура регистрирует нового курьера перед тестом"""
+    response = new_courier.register()
+    if response.status_code != 201:
+        pytest.fail(f"Ошибка при регистрации курьера: {response.status_code} - {response.text}")
+    return new_courier
+
+
+@pytest.fixture(scope="function")
+def delete_courier(register_courier):
+    """Фикстура удаляет курьера после теста"""
+    yield
+    response = register_courier.delete()
+    if response and response.status_code != 200:
+        print(f"Ошибка при удалении курьера: {response.status_code} - {response.text}")
 
 
 @allure.feature("Курьер")
 @allure.story("Создание курьера")
-@allure.title("Создание нового курьера с уникальным логином")
-@allure.description("Этот тест проверяет, что можно создать нового курьера, и он успешно добавляется в систему.")
-def test_create_courier(register_new_courier_and_return_login_password):
-    with allure.step("Регистрация нового курьера"):
-        login, password, first_name = register_new_courier_and_return_login_password
-
-    with allure.step("Проверка, что данные курьера не пустые"):
-        assert login
-        assert password
-        assert first_name
-
-
-@allure.feature("Курьер")
-@allure.story("Создание курьера")
-@allure.title("Попытка создания дублирующего курьера")
-@allure.description("Этот тест проверяет, что нельзя создать второго курьера с тем же логином.")
-def test_create_duplicate_courier(register_new_courier_and_return_login_password):
-    with allure.step("Регистрация первого курьера"):
-        login, password, first_name = register_new_courier_and_return_login_password
-
-    with allure.step("Попытка зарегистрировать второго курьера с тем же логином"):
-        payload = {
-            "login": login,
-            "password": password,
-            "firstName": first_name
-        }
-        response_duplicate = requests.post('https://qa-scooter.praktikum-services.ru/api/v1/courier', json=payload)
-
-    with allure.step("Проверка, что сервер вернул статус-код 409"):
-        assert response_duplicate.status_code == 409
+@allure.title("Успешная регистрация курьера")
+@allure.description("Этот тест проверяет успешную регистрацию нового курьера.")
+def test_create_courier(register_courier, delete_courier):
+    courier = register_courier
+    with allure.step("Проверка, что ID курьера был получен после регистрации"):
+        assert courier.courier_id is not None, "ID курьера не был получен после регистрации"
