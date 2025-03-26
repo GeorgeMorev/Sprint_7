@@ -6,7 +6,7 @@ import string
 import random
 
 
-class Courier:
+class CourierCreate:
     BASE_URL = 'https://qa-scooter.praktikum-services.ru/api/v1/courier'
 
     def __init__(self, login=None, password=None, first_name=None):
@@ -60,7 +60,7 @@ class Courier:
 @pytest.fixture(scope="function")
 def new_courier():
     """Фикстура создаёт объект курьера с уникальными данными"""
-    return Courier()
+    return CourierCreate()
 
 
 @pytest.fixture(scope="function")
@@ -97,15 +97,15 @@ def test_create_courier(register_courier, delete_courier):
             f"Ожидался ответ {expected_response}, но получен {courier.last_response.json()}"
         )
 
+
 @allure.feature("Курьер")
 @allure.story("Создание курьера")
 @allure.title("Попытка создать курьера с уже существующим логином")
 @allure.description("Этот тест проверяет, что нельзя создать двух курьеров с одинаковым логином.")
 def test_create_duplicate_courier(register_courier, delete_courier):
-    """Тест на попытку регистрации курьера с уже существующим логином."""
     courier = register_courier
 
-    duplicate_courier = Courier(login=courier.login, password="another_password", first_name="AnotherTest")
+    duplicate_courier = CourierCreate(login=courier.login, password="another_password", first_name="AnotherTest")
 
     with allure.step("Отправка запроса на регистрацию второго курьера с таким же логином"):
         response = duplicate_courier.register()
@@ -118,19 +118,22 @@ def test_create_duplicate_courier(register_courier, delete_courier):
             f"Некорректное сообщение об ошибке: {response.json()}"
 
 
+import requests
+import allure
+import pytest
+
 @allure.feature("Курьер")
 @allure.story("Создание курьера")
 @allure.title("Проверка создания курьера без обязательных полей")
-@allure.description("Этот тест проверяет, что курьер не может быть создан, если отсутствует хотя бы одно обязательное поле.")
+@allure.description(
+    "Этот тест проверяет, что курьер не может быть создан, если отсутствует хотя бы одно обязательное поле.")
 @pytest.mark.parametrize("missing_field", ["login", "password"])
 def test_create_courier_missing_fields(register_courier, missing_field):
-    """Тест на проверку обязательных полей при создании курьера."""
 
     # Создаём данные курьера с отсутствующим обязательным полем
     courier_data = {
         "login": register_courier.login,
-        "password": register_courier.password,
-        "firstName": register_courier.first_name
+        "password": register_courier.password
     }
 
     # Удаляем одно обязательное поле
