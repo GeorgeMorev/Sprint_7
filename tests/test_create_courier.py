@@ -15,6 +15,7 @@ class Courier:
         self.password = password or self._generate_random_string(10)
         self.first_name = first_name or self._generate_random_string(6)
         self.courier_id = None
+        self.last_response = None
 
     @staticmethod
     def _generate_random_string(length=10):
@@ -29,10 +30,16 @@ class Courier:
             "password": self.password,
             "firstName": self.first_name
         }
-        response = requests.post(self.BASE_URL, json=payload)
-        if response.status_code == 201:
-            self.courier_id = self.get_courier_id()
-        return response
+        try:
+            self.last_response = requests.post(self.BASE_URL, json=payload)
+
+            if self.last_response is not None and self.last_response.status_code == 201:
+                self.courier_id = self.get_courier_id()
+
+            return self.last_response
+        except requests.RequestException as e:
+            print(f"Ошибка при отправке запроса: {e}")
+            return None
 
     def get_courier_id(self):
         """Получает ID курьера после успешной регистрации"""
@@ -83,6 +90,12 @@ def test_create_courier(register_courier, delete_courier):
     with allure.step("Проверка, что ID курьера был получен после регистрации"):
         assert courier.courier_id is not None, "ID курьера не был получен после регистрации"
 
+    with allure.step("Проверка, что ответ содержит {'ok': true}"):
+        assert courier.last_response is not None, "Ошибка: last_response не был сохранен"
+        expected_response = {"ok": True}
+        assert courier.last_response.json() == expected_response, (
+            f"Ожидался ответ {expected_response}, но получен {courier.last_response.json()}"
+        )
 
 @allure.feature("Курьер")
 @allure.story("Создание курьера")
