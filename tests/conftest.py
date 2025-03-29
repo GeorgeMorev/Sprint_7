@@ -59,6 +59,7 @@ def get_user_token(create_courier):
 
 
 @pytest.fixture(scope="function")
+@allure.step("Авторизация курьера")
 def login_courier(create_courier):
     """Фикстура для авторизации курьера"""
 
@@ -74,6 +75,7 @@ def login_courier(create_courier):
 
 
 @pytest.fixture(scope="function")
+@allure.step("Получение данных из генератора и удаление одного из обязательных полей")
 def courier_data_with_missing_field(create_courier, missing_field):
     """Фикстура для создания данных курьера с отсутствующим обязательным полем"""
     # Генерируем данные курьера с помощью генератора
@@ -101,7 +103,8 @@ def duplicate_courier(create_courier, send_create_courier_request):
 
 
 @pytest.fixture
+@allure.step("Получение данных заказа")
 def order_data_fixture():
-    """Фикстура для получения случайных данных заказа."""
+    """Фикстура для получения данных заказа."""
     with allure.step("Получение данных для заказа"):
         return TestOrderData.order_data

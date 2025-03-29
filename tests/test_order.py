@@ -4,6 +4,12 @@ import requests
 from config import APIUrls
 
 
+import allure
+
+@allure.feature("Заказ")
+@allure.story("Создание заказа с цветами")
+@allure.title("Тест на создание заказа с разными цветами")
+@allure.description("Этот тест проверяет создание заказа с разными вариантами цветов и ожидаемый статус код ответа.")
 @pytest.mark.parametrize("color, expected_status_code", [
     (["BLACK"], 201),
     (["GREY"], 201),
@@ -22,10 +28,12 @@ def test_create_order_with_colors(order_data_fixture, color, expected_status_cod
     with allure.step("Проверка, что тело ответа содержит track"):
         response_json = response.json()
         assert "track" in response_json, f"Ожидалось, что в ответе будет track, но его нет. Ответ: {response_json}"
-
+import allure
 
 @allure.feature("Получение заказа по трек-номеру")
 @allure.story("Успешное получение заказа")
+@allure.title("Тест на успешное получение заказа по трек-номеру")
+@allure.description("Этот тест проверяет успешное получение заказа по трек-номеру и корректность ответа от сервера.")
 def test_get_order_by_track():
     """Проверяет успешное получение заказа по трек-номеру."""
 

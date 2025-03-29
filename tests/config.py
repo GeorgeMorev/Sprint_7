@@ -65,3 +65,4 @@ class OrderDataGenerator:
             allure.attach(str(order_data), name="Сгенерированные данные заказа",
                           attachment_type=allure.attachment_type.JSON)
             return order_data
+
