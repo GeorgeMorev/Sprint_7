@@ -52,23 +52,17 @@ def get_user_token(create_courier):
 
 
 @pytest.fixture(scope="function")
-@allure.step("Авторизация курьера")
-def login(create_courier):
+def login_courier(create_courier):
     """Фикстура для авторизации курьера"""
-    login_data = {
-        'login': create_courier['login'],
-        'password': create_courier['password']
-    }
+    def _login(login, password):
+        login_data = {
+            'login': login or create_courier['login'],
+            'password': password or create_courier['password']
+        }
+        response = requests.post(APIUrls.COURIER_LOGIN, json=login_data)
+        return response
 
-    response = requests.post(APIUrls.COURIER_LOGIN, json=login_data)
-
-    # Проверка успешности запроса
-    assert response.status_code == 200, f"Ошибка при авторизации: {response.text}"
-
-    # Логируем ответ и статус
-    allure.attach(f"Response: {response.text}", name="Ответ API", attachment_type=allure.attachment_type.JSON)
-
-    return response
+    return _login
 
 
 @pytest.fixture(scope="function")
