@@ -1,17 +1,26 @@
 import pytest
 import allure
 import requests
-from config import APIUrls, CourierDataGenerator
-
+from config import APIUrls, CourierDataGenerator, TestOrderData
 
 @pytest.fixture
-@allure.step("Создание курьера")
-def create_courier():
+@allure.step("Отправка запроса на создание курьера")
+def send_create_courier_request():
+    """Фикстура для отправки запроса на создание курьера"""
+    def _send_request(courier_data):
+        """Отправляем запрос на создание курьера"""
+        response = requests.post(APIUrls.COURIER_CREATE, json=courier_data)
+        return response
+    return _send_request
+
+@pytest.fixture
+@allure.step("Создание курьера с уникальными данными через API")
+def create_courier(send_create_courier_request):
     """Создает курьера с уникальными данными через API"""
     courier_data = CourierDataGenerator.generate_courier_data()  # Генерация данных курьера
 
     # Отправка запроса на создание курьера
-    response = requests.post(APIUrls.COURIER_CREATE, json=courier_data)
+    response = send_create_courier_request(courier_data)
     response_data = response.json()
 
     # Проверка успешности запроса
@@ -23,10 +32,8 @@ def create_courier():
     allure.attach(f"Response: {response.text}", name="Ответ API", attachment_type=allure.attachment_type.JSON)
     allure.attach(f"Courier ID: {courier_id}", name="ID курьера", attachment_type=allure.attachment_type.TEXT)
 
-
     # Возвращаем данные курьера и код ответа
     return {**courier_data, 'status_code': response.status_code, 'ok': response_data.get('ok')}
-
 
 @pytest.fixture
 @allure.step("Получение токена курьера")
@@ -54,6 +61,7 @@ def get_user_token(create_courier):
 @pytest.fixture(scope="function")
 def login_courier(create_courier):
     """Фикстура для авторизации курьера"""
+
     def _login(login, password):
         login_data = {
             'login': login or create_courier['login'],
@@ -78,12 +86,22 @@ def courier_data_with_missing_field(create_courier, missing_field):
 
 
 @pytest.fixture
-def duplicate_courier(create_courier):
-    """Создает второй курьер с уже существующим логином"""
-    duplicate_courier_data = {
-        'login': create_courier['login'],  # Используем тот же логин
-        'password': 'new_password',
-        'first_name': 'NewFirstName'
-    }
-    response = requests.post(APIUrls.COURIER_CREATE, json=duplicate_courier_data)
+@allure.step("Попытка создать курьера с уже существующим логином")
+def duplicate_courier(create_courier, send_create_courier_request):
+    """Фикстура для попытки повторного создания курьера с уже существующим логином"""
+    # Используем данные первого курьера
+    existing_courier_data = create_courier
+    response = send_create_courier_request(existing_courier_data)  # Отправка запроса на создание курьера
+
+    # Логируем запрос
+    allure.attach(f"Duplicate Courier Request: {existing_courier_data}",
+                  name="Данные для повторной регистрации курьера", attachment_type=allure.attachment_type.JSON)
+
     return response
+
+
+@pytest.fixture
+def order_data_fixture():
+    """Фикстура для получения случайных данных заказа."""
+    with allure.step("Получение данных для заказа"):
+        return TestOrderData.order_data

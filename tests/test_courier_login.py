@@ -1,5 +1,4 @@
 import pytest
-import conftest
 import allure
 
 
@@ -38,3 +37,16 @@ def test_authorization_missing_fields(login, password, expected_status_code, log
     with allure.step(f"Проверка, что код ошибки {expected_status_code} был возвращен"):
         assert response.status_code == expected_status_code, \
             f"Ожидался статус-код {expected_status_code}, но получен {response.status_code} - {response.text}"
+
+@allure.feature("Курьер")
+@allure.story("Авторизация курьера")
+@allure.title("Авторизация несуществующего курьера")
+@allure.description("Этот тест проверяет, что запрос на авторизацию под несуществующим курьером вернет ошибку.")
+def test_authorization_non_existent_courier(login_courier):
+    """Тест на проверку авторизации несуществующего курьера."""
+
+    response = login_courier("non_existent_login", "non_existent_password")
+
+    with allure.step("Проверка, что вернулся код ошибки 404"):
+        assert response.status_code == 404, \
+            f"Ожидался статус-код 404, но получен {response.status_code} - {response.text}"
