@@ -1,1 +1,0 @@
-login: hannahsmith, password: &8dURxi%ii, first_name: Christopher

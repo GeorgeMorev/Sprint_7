@@ -14,26 +14,27 @@ def send_create_courier_request():
     return _send_request
 
 @pytest.fixture
-@allure.step("Создание курьера с уникальными данными через API")
-def create_courier(send_create_courier_request):
-    """Создает курьера с уникальными данными через API"""
-    courier_data = CourierDataGenerator.generate_courier_data()  # Генерация данных курьера
-
-    # Отправка запроса на создание курьера
-    response = send_create_courier_request(courier_data)
+def create_courier():
+    """Фикстура для создания курьера и удаления после теста"""
+    courier_data = CourierDataGenerator.generate_courier_data()
+    response = requests.post(APIUrls.COURIER_CREATE, json=courier_data)
     response_data = response.json()
 
-    # Проверка успешности запроса
-    assert response.status_code == 201, f"Ошибка при создании курьера: {response.text}"
+    assert response.status_code == 201, f"Не удалось создать курьера: {response.text}"
 
-    courier_id = response.json().get('id')
+    courier_id = requests.post(APIUrls.COURIER_LOGIN, json={
+        'login': courier_data['login'],
+        'password': courier_data['password']
+    }).json().get('id')
 
-    # Логируем ответ и id курьера
-    allure.attach(f"Response: {response.text}", name="Ответ API", attachment_type=allure.attachment_type.JSON)
     allure.attach(f"Courier ID: {courier_id}", name="ID курьера", attachment_type=allure.attachment_type.TEXT)
 
-    # Возвращаем данные курьера и код ответа
-    return {**courier_data, 'status_code': response.status_code, 'ok': response_data.get('ok')}
+    yield {**courier_data, 'status_code': response.status_code, 'ok': response_data.get('ok'), 'id': courier_id}
+
+    # Удаляем курьера после теста
+    if courier_id:
+        delete_response = requests.delete(f"{APIUrls.COURIER_CREATE}/{courier_id}")
+        assert delete_response.status_code == 200, f"Не удалось удалить курьера: {delete_response.text}"
 
 @pytest.fixture
 @allure.step("Получение токена курьера")
