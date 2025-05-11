@@ -1,2 +1,2 @@
-ReadME.MD
+ReadME
 
